@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smoke & Mirrors — A Digital Exhibit</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #f5f0e8;
+    --tan: #e8dfc8;
+    --charcoal: #1c1a17;
+    --brown: #5c3d2e;
+    --rust: #a63d2f;
+    --muted: #6b6152;
+    --border: #c8b99a;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--cream);
+    color: var(--charcoal);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 18px;
+    line-height: 1.75;
+  }
+
+  /* EDIT MODE BANNER */
+  .edit-banner {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 200;
+    background: var(--rust);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 0.7rem 2rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Source Serif 4', serif;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+  }
+
+  .edit-banner.hidden { transform: translateY(100%); }
+
+  .edit-banner button {
+    background: white;
+    color: var(--rust);
+    border: none;
+    padding: 0.35rem 1.1rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: 2px;
+    transition: opacity 0.2s;
+  }
+
+  .edit-banner button:hover { opacity: 0.8; }
+
+  .edit-toggle {
+    position: fixed;
+    bottom: 1.2rem;
+    right: 1.5rem;
+    z-index: 201;
+    background: var(--charcoal);
+    color: var(--cream);
+    border: 1.5px solid var(--rust);
+    padding: 0.5rem 1.1rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: 'Source Serif 4', serif;
+    border-radius: 2px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .edit-toggle:hover, .edit-toggle.active {
+    background: var(--rust);
+    color: white;
+    border-color: var(--rust);
+  }
+
+  /* EDITABLE ELEMENTS */
+  [contenteditable="true"] {
+    outline: none;
+    border-radius: 2px;
+    transition: background 0.15s, box-shadow 0.15s;
+    cursor: text;
+  }
+
+  body.edit-mode [contenteditable="true"] {
+    background: rgba(166, 61, 47, 0.06);
+    box-shadow: 0 0 0 1.5px rgba(166, 61, 47, 0.35);
+  }
+
+  body.edit-mode [contenteditable="true"]:hover {
+    background: rgba(166, 61, 47, 0.1);
+    box-shadow: 0 0 0 1.5px rgba(166, 61, 47, 0.6);
+  }
+
+  body.edit-mode [contenteditable="true"]:focus {
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 0 2px var(--rust);
+  }
+
+  /* dark background editable */
+  body.edit-mode .dark-edit[contenteditable="true"] {
+    background: rgba(255,255,255,0.05);
+    box-shadow: 0 0 0 1.5px rgba(166, 61, 47, 0.5);
+  }
+
+  body.edit-mode .dark-edit[contenteditable="true"]:focus {
+    background: rgba(255,255,255,0.08);
+    box-shadow: 0 0 0 2px var(--rust);
+  }
+
+  /* edit hint tooltip */
+  body.edit-mode [contenteditable="true"]::after {
+    content: attr(data-hint);
+    display: none;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: var(--charcoal);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 3rem;
+    height: 56px;
+    border-bottom: 2px solid var(--rust);
+  }
+
+  .nav-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--cream);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--tan);
+    text-decoration: none;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--rust); }
+
+  /* HERO */
+  .hero {
+    padding-top: 56px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: var(--charcoal);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-texture {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px),
+      repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px);
+    pointer-events: none;
+  }
+
+  .hero-year {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(10rem, 22vw, 22rem);
+    color: rgba(255,255,255,0.04);
+    font-weight: 700;
+    user-select: none;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 5rem 4rem 4rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    max-width: 900px;
+    animation: fadeUp 1s ease both 0.3s;
+  }
+
+  .hero-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 6vw, 5.5rem);
+    color: var(--cream);
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-subtitle {
+    color: rgba(245,240,232,0.55);
+    font-size: 1rem;
+    max-width: 520px;
+    font-weight: 300;
+  }
+
+  /* SECTIONS */
+  section {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+  }
+
+  .section-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    max-width: 80px;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    line-height: 1.2;
+    margin-bottom: 2rem;
+    color: var(--charcoal);
+  }
+
+  p {
+    color: #3a3530;
+    margin-bottom: 1.4rem;
+    font-weight: 300;
+  }
+
+  .intro-pull {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    font-style: italic;
+    color: var(--brown);
+    border-left: 3px solid var(--rust);
+    padding-left: 1.5rem;
+    margin: 2.5rem 0;
+    line-height: 1.55;
+  }
+
+  .pull-attribution {
+    font-size: 0.85rem;
+    font-style: normal;
+    color: var(--muted);
+    display: block;
+    margin-top: 0.5rem;
+  }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  /* SUB-PAGES GRID */
+  .pages-section {
+    background: var(--tan);
+    padding: 5rem 2rem;
+  }
+
+  .pages-inner {
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  .pages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5px;
+    margin-top: 3rem;
+    border: 1.5px solid var(--border);
+  }
+
+  .page-card {
+    background: var(--cream);
+    padding: 2rem 1.8rem;
+    transition: background 0.2s;
+  }
+
+  .page-card:hover { background: #f0e8d5; }
+
+  .page-card-num {
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    color: var(--rust);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .page-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    margin-bottom: 0.6rem;
+    line-height: 1.3;
+  }
+
+  .page-card p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0;
+  }
+
+  /* SOURCES */
+  .sources-section {
+    background: var(--charcoal);
+    padding: 5rem 2rem;
+  }
+
+  .sources-inner {
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  .sources-inner .section-label { color: var(--rust); }
+  .sources-inner h2 { color: var(--cream); }
+
+  .source-item {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 1.5rem 0;
+  }
+
+  .source-item:last-child { border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+  .source-type {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 0.3rem;
+  }
+
+  .source-title {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--cream);
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .source-author {
+    font-size: 0.82rem;
+    color: rgba(245,240,232,0.45);
+  }
+
+  /* FOOTER */
+  footer {
+    background: var(--charcoal);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    text-align: center;
+    padding: 2rem 2rem 5rem;
+    font-size: 0.75rem;
+    color: rgba(245,240,232,0.3);
+    letter-spacing: 0.1em;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .fade-in.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* SAVE FLASH */
+  .save-flash {
+    position: fixed;
+    top: 70px;
+    right: 1.5rem;
+    background: #2a6e3f;
+    color: white;
+    padding: 0.5rem 1.2rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    z-index: 300;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .save-flash.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- EDIT TOGGLE BUTTON -->
+<button class="edit-toggle" id="editToggle" onclick="toggleEditMode()">✏ Edit Mode</button>
+
+<!-- EDIT BANNER -->
+<div class="edit-banner hidden" id="editBanner">
+  <span>✏ Edit Mode — Click any text to edit it &nbsp;|&nbsp; Changes save automatically</span>
+  <button onclick="saveToFile()">⬇ Download Copy</button>
+  <button onclick="resetEdits()" style="background:#ffe0dc; color:#a63d2f;">↺ Reset All</button>
+  <button onclick="toggleEditMode()">✕ Done Editing</button>
+</div>
+
+<!-- SAVE FLASH -->
+<div class="save-flash" id="saveFlash">Saved!</div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#home">Smoke & Mirrors</a>
+  <ul class="nav-links">
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="gallery.html">Gallery</a></li>
+    <li><a href="#sources">Sources</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero" id="home">
+  <div class="hero-texture"></div>
+  <div class="hero-year">1960s</div>
+  <div class="hero-content">
+    <p class="hero-label">A Digital Museum Exhibit</p>
+    <h1 class="hero-title" contenteditable="false">Smoke &amp; Mirrors:<br><em>How the Tobacco Industry<br>Manufactured Doubt</em></h1>
+    <p class="hero-subtitle dark-edit" contenteditable="false">An examination of how America's most powerful industry shaped public opinion, bought science, and defined a culture — all while knowing the truth.</p>
+  </div>
+</div>
+
+<!-- INTRODUCTION -->
+<section id="introduction" class="fade-in">
+  <div class="section-label">Homepage Introduction</div>
+  <h2 contenteditable="false">The Greatest Marketing Campaign in American History Was Built on a Lie</h2>
+
+  <p contenteditable="false">In 1964 the US Surgeon General released a report that confirmed what medical researchers had been warning about for some time. This was the adverse negative effects caused by cigarette consumption. As we look at health guidelines today, it would make you think that this was the end of the cigarette, but no it was just the beginning of the fight between tobacco companies and medical findings. As these guidelines came out the tobacco industry had already set itself up to create doubt among the findings of these studies to keep the public interested and consuming their product. This was among many of the tactics used by the many companies to keep profits up, and doubt down about their products.</p>
+
+  <p contenteditable="false">This exhibit focuses on the 1960s as an important time in the culture of America and public health. A moment when the tobacco industry was faced with growing knowledge of the negative effects associated with the consumption of their products. However they responded to this not honestly, but with mass manipulation of public opinion that had never been seen before. These companies started to play offense by funding their own studies and pushing the idea of cigarettes as American and masculine. Creating public uncertainty when it came to the drawbacks and pushing the positives, this was quite the interesting advertising campaign.</p>
+
+  <p contenteditable="false">The artifacts in this exhibit, many of them Marlboro archives, bring the cultural side of the marketing strategy used. These advertisements didn't sell cigarettes, they sold the brand identity of something people wanted to be associated with at the time. Through the cowboys and sense that Americans smoke cigarettes we see how they impacted public opinion and with the manipulation of scientific studies to create manufactured findings, you start to get an idea of the campaign that these companies were running. With the idea of smoking being normal, and that it wasn't dangerous, this led many people to fall into addiction to cigarettes and tobacco products.</p>
+
+  <p contenteditable="false">This exhibit invites you to look at how the tobacco industry in the 1960s was more than a simple story of corporate greed, and goes deeper into how public opinion can be swayed through the use of manufactured science and cultural norms being engendered. All of this at the same time and done by design to create an addiction prone country. This is a lesson that sometimes you need to peel back the layers of the onion to question the things that are being pushed as normal based on questionable scientific findings, in this case it was the research, and dishonorable corporate interest.</p>
+</section>
+
+
+<!-- SOURCES -->
+<div class="sources-section" id="sources">
+  <div class="sources-inner">
+    <div class="section-label">Bibliography</div>
+    <h2>Sources</h2>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Secondary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">The Cigarette Century: The Rise, Fall, and Deadly Persistence of the Product That Defined America</p>
+      <p class="source-author dark-edit" contenteditable="false">Allan M. Brandt — Internet Archive, 1970</p>
+    </div>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Secondary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">Tobacco Industry Manipulation of Research</p>
+      <p class="source-author dark-edit" contenteditable="false">Lisa A. Bero — Public Health Reports, 2005. PMC1497700</p>
+    </div>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Secondary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">Smokescreen: The Truth Behind the Tobacco Industry Cover-Up</p>
+      <p class="source-author dark-edit" contenteditable="false">Robert N. Proctor — JAMA 276, no. 12 (1996): 998</p>
+    </div>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Primary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">Archival Item, Ref745 — Marlboro Oral History and Documentation Project</p>
+      <p class="source-author dark-edit" contenteditable="false">NMAH.AC.0198. Archives Center, National Museum of American History, Smithsonian Institution. Accessed February 15, 2026.</p>
+    </div>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Primary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">Archival Item, Ref749 — Marlboro Oral History and Documentation Project</p>
+      <p class="source-author dark-edit" contenteditable="false">NMAH.AC.0198. Archives Center, National Museum of American History, Smithsonian Institution. Accessed February 15, 2026.</p>
+    </div>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Primary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">Archival Item, Ref750 — Marlboro Oral History and Documentation Project</p>
+      <p class="source-author dark-edit" contenteditable="false">NMAH.AC.0198. Archives Center, National Museum of American History, Smithsonian Institution. Accessed February 15, 2026.</p>
+    </div>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Primary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">Archival Item, Ref751 — Marlboro Oral History and Documentation Project</p>
+      <p class="source-author dark-edit" contenteditable="false">NMAH.AC.0198. Archives Center, National Museum of American History, Smithsonian Institution. Accessed February 20, 2026.</p>
+    </div>
+
+    <div class="source-item fade-in">
+      <div class="source-type">Primary Source</div>
+      <p class="source-title dark-edit" contenteditable="false">Archival Item, Ref752 — Marlboro Oral History and Documentation Project</p>
+      <p class="source-author dark-edit" contenteditable="false">NMAH.AC.0198. Archives Center, National Museum of American History, Smithsonian Institution. Accessed February 15, 2026.</p>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <span contenteditable="false" class="dark-edit">Smoke &amp; Mirrors: A Digital Exhibit &nbsp;|&nbsp; History of the Tobacco Industry, 1960s &nbsp;|&nbsp; Draft — February 2026</span>
+</footer>
+
+<script>
+  // ── Give every editable element a stable ID for storage ──
+  const STORE_KEY = 'tobacco-exhibit-edits';
+
+  function getEditables() {
+    return Array.from(document.querySelectorAll('[contenteditable]'));
+  }
+
+  function assignIds() {
+    getEditables().forEach((el, i) => {
+      if (!el.dataset.editId) el.dataset.editId = 'edit-' + i;
+    });
+  }
+
+  // ── Save all content to localStorage ──
+  function persistEdits() {
+    const data = {};
+    getEditables().forEach(el => {
+      data[el.dataset.editId] = el.innerHTML;
+    });
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  }
+
+  // ── Restore saved content on page load ──
+  function restoreEdits() {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      getEditables().forEach(el => {
+        if (data[el.dataset.editId] !== undefined) {
+          el.innerHTML = data[el.dataset.editId];
+        }
+      });
+    } catch(e) { /* ignore corrupt data */ }
+  }
+
+  // ── Reset all edits to original ──
+  function resetEdits() {
+    if (!confirm('Reset all text back to the original? This cannot be undone.')) return;
+    localStorage.removeItem(STORE_KEY);
+    location.reload();
+  }
+
+  // ── Intersection observer for fade-ins ──
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  // ── Edit mode ──
+  let editMode = false;
+
+  function toggleEditMode() {
+    editMode = !editMode;
+    document.body.classList.toggle('edit-mode', editMode);
+    const banner = document.getElementById('editBanner');
+    const toggle = document.getElementById('editToggle');
+    banner.classList.toggle('hidden', !editMode);
+    toggle.classList.toggle('active', editMode);
+    toggle.textContent = editMode ? '✕ Exit Edit' : '✏ Edit Mode';
+
+    getEditables().forEach(el => {
+      el.contentEditable = editMode ? 'true' : 'false';
+    });
+  }
+
+  // ── Download a standalone copy of the current page ──
+  function saveToFile() {
+    getEditables().forEach(el => el.contentEditable = 'false');
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    if (editMode) getEditables().forEach(el => el.contentEditable = 'true');
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tobacco-exhibit-edited.html';
+    a.click();
+
+    showFlash('Downloaded!', '#2a6e3f');
+  }
+
+  // ── Flash notification ──
+  function showFlash(msg, color) {
+    const flash = document.getElementById('saveFlash');
+    flash.textContent = msg;
+    flash.style.background = color || '#2a6e3f';
+    flash.classList.add('show');
+    clearTimeout(window._flashTimer);
+    window._flashTimer = setTimeout(() => flash.classList.remove('show'), 2000);
+  }
+
+  // ── Auto-save to localStorage on every keystroke ──
+  document.addEventListener('input', () => {
+    persistEdits();
+    showFlash('Saved ✓', '#2a6e3f');
+  });
+
+  // ── Init on load ──
+  assignIds();
+  restoreEdits();
+</script>
+</body>
+</html>
